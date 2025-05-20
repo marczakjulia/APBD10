@@ -20,4 +20,4 @@ In my solution I have just decided to keep it all in one project, yet different 
 Of course the Project.cs is present in the solution, where everything connects. This division was implemented by me, becasue this
 project is relatively small. Meaning I don't have to do any validation of data or any other "logic" structures. Because of that
 in this case I thought it is appropriate to keep it as simple as possible. If any more complex functionalities would be required
-then I would divide it into a more complex strucutre.
+then I would divide it into a more complex strucutre(like API, Repository, Logic, Models... just as we did in other projects)

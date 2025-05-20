@@ -33,7 +33,7 @@ app.MapGet("/api/devices", async (MasterContext db, CancellationToken cancellati
     try
     {
         var devices = await db.Devices
-            .Select(d => new DeviceDto(d.Id, d.Name))
+            .Select(d => new DeviceDto(d.Id, d.Name)) //what i am getting, so new devicedto 
             .ToListAsync(cancellationToken);
         return Results.Ok(devices);
     }
@@ -48,6 +48,7 @@ app.MapGet("/api/devices/{id}", async (int id, MasterContext db, CancellationTok
 {
     try
     {
+        //eagerly load device types, and colection of deviceempl,  then for each deviceemp loads employee, and for each emplyee person. kinda like a lot of left joins
         var device = await db.Devices
             .Include(d => d.DeviceType)
             .Include(d => d.DeviceEmployees)
@@ -58,7 +59,7 @@ app.MapGet("/api/devices/{id}", async (int id, MasterContext db, CancellationTok
         if (device is null)
             return Results.NotFound($"Device {id} not found.");
         
-        var additionalProps = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement;
+        var additionalProps = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement; //back to jsonelement
         
         var currentAssignment = device.DeviceEmployees
             .FirstOrDefault(de => de.ReturnDate == null);
@@ -89,46 +90,60 @@ app.MapGet("/api/devices/{id}", async (int id, MasterContext db, CancellationTok
     }
 });
 
-app.MapPost("/api/devices", async ([FromBody] CreateDevice dev, MasterContext db, CancellationToken cancellationToken) =>
-{
-    var type = await db.DeviceTypes
-        .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
-    if (type is null)
-        return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
-    
-    var device = new Device
+app.MapPost("/api/devices", async (CreateDevice dev, MasterContext db, CancellationToken cancellationToken) =>
     {
-        Name = dev.Name,         
-        DeviceTypeId = type.Id,
-        IsEnabled = dev.IsEnabled,
-        AdditionalProperties = dev.AdditionalProperties.GetRawText()
-    };
-    db.Devices.Add(device);
-    await db.SaveChangesAsync(cancellationToken);
-    return Results.Created($"/api/devices/{device.Id}", device);
-});
+        try
+        {
+            var type = await db.DeviceTypes
+                .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
+            if (type is null)
+                return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
+            var device = new Device
+            {
+                Name = dev.Name,
+                DeviceTypeId = type.Id,
+                IsEnabled = dev.IsEnabled,
+                AdditionalProperties = dev.AdditionalProperties.GetRawText() //from client structured data, then raw Json and back to structured json so the response looks correct 
+            };
+            db.Devices.Add(device);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Created($"/api/devices/{device.Id}", device);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(ex.Message);
+        }
+    });
 
 
 //update
 app.MapPut("/api/devices/{id}", async (int id, CreateDevice dev, MasterContext db, CancellationToken cancellationToken) =>
 {
-    
-    var device = await db.Devices.FindAsync( id , cancellationToken);
-    if (device is null)
-        return Results.NotFound($"Device {id} not found.");
-    
-    var type = await db.DeviceTypes
-        .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
-    if (type is null)
-        return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
-    
-    device.DeviceTypeId = type.Id;
-    device.IsEnabled = dev.IsEnabled;
-    device.AdditionalProperties = dev.AdditionalProperties.GetRawText();
-    
-    await db.SaveChangesAsync(cancellationToken);
-    
-    return Results.NoContent();
+
+    try
+    {
+        var device = await db.Devices.FindAsync(id, cancellationToken);
+
+        if (device is null)
+            return Results.NotFound($"Device {id} not found.");
+
+        var type = await db.DeviceTypes
+            .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
+        if (type is null)
+            return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
+
+        device.DeviceTypeId = type.Id;
+        device.IsEnabled = dev.IsEnabled;
+        device.AdditionalProperties = dev.AdditionalProperties.GetRawText();
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
 });
 
 //delete
@@ -206,7 +221,7 @@ app.MapGet("/api/employees/{id}", async (
             .FirstOrDefaultAsync(cancellationToken);
 
         if (emp is null)
-            return Results.NotFound("Employee {id} not found");
+            return Results.NotFound($"Employee {id} not found");
 
         return Results.Ok(emp);
     }

@@ -111,6 +111,7 @@ app.MapPost("/api/devices", async (CreateDevice dev, MasterContext db, Cancellat
         await db.SaveChangesAsync(cancellationToken);
         var updatedDto = new
         {
+            id = device.Id,
             name = device.Name,
             deviceTypeName  = type.Name,
             isEnabled = device.IsEnabled,

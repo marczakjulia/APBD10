@@ -7,14 +7,15 @@ namespace WebApplication1.DTO;
 public class CreateDevice
 {
     //used for creation hence the required 
+    //in here keyword added so that the 400 is returned 
     [Required]
-    public string Name { get; set; } = null!;
+    public required string Name { get; set; } = null!;
     [Required]
-    public string DeviceTypeName { get; set; }  = null!;
+    public required string DeviceTypeName { get; set; }  = null!;
     
     [Required]
-    public bool IsEnabled {get; set;}
+    public required bool IsEnabled {get; set;}
     
     [Required] 
-    public JsonElement AdditionalProperties { get; set; } 
+    public required JsonElement AdditionalProperties { get; set; } 
 }

@@ -95,6 +95,12 @@ app.MapPost("/api/devices", async (CreateDevice dev, MasterContext db, Cancellat
 {
     try
     {
+        //i also added this, so that there is en error if someone inputs null for the additionalProperties 
+        if (dev.AdditionalProperties.ValueKind == JsonValueKind.Null)
+        {
+            return Results.BadRequest("AdditionalProperties cannot be null or undefined.");
+        }
+
         var type = await db.DeviceTypes
             .SingleOrDefaultAsync(t => t.Name == dev.DeviceTypeName, cancellationToken);
 

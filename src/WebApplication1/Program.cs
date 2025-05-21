@@ -58,8 +58,9 @@ app.MapGet("/api/devices/{id}", async (int id, MasterContext db, CancellationTok
 
         if (device is null)
             return Results.NotFound($"Device {id} not found.");
-        
-        var additionalProps = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement; //back to jsonelement
+        //i am not boxing as object, in this solution. what i am doing is i know im working with json element, and the API will return JSON object.
+        //if this is not the correct approach, i was absent during the classes hence i am happy to correct it for it to work properly
+        var additionalProps = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement;
         
         var currentAssignment = device.DeviceEmployees
             .FirstOrDefault(de => de.ReturnDate == null);
@@ -147,18 +148,27 @@ app.MapPut("/api/devices/{id}", async (int id, CreateDevice dev, MasterContext d
 });
 
 //delete
+//since it wasnt specifies in the file, what i am doing is checking if a device belongs to any employee
+//if yes i do not delete it
+//another way would be to delete the device from the connection and then safetly delete it but im taking the easy way out :)
 app.MapDelete("/api/devices/{id}", async (int id, MasterContext db, CancellationToken cancellationToken) =>
 {
     try
     {
-        var device = await db.Devices.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        var device = await db.Devices.FindAsync(id, cancellationToken);
         if (device is null)
-        {
             return Results.NotFound($"Device {id} not found");
-        }
+
+        var isAssigned = await db.DeviceEmployees
+            .AnyAsync(de => de.DeviceId == id, cancellationToken);
+        if (isAssigned)
+            return Results.BadRequest($"Cannot delete device {id} because it is associated with an employee."
+            );
+
         db.Devices.Remove(device);
         await db.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
+
     }
     catch (Exception ex)
     {

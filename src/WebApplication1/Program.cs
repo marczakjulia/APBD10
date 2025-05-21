@@ -102,19 +102,19 @@ app.MapPost("/api/devices", async (CreateDevice dev, MasterContext db, Cancellat
             return Results.BadRequest($"Unknown device type '{dev.DeviceTypeName}'.");
         var device = new Device
         {
-            Name                 = dev.Name,
-            DeviceTypeId         = type.Id,
-            IsEnabled            = dev.IsEnabled,
+            Name = dev.Name,
+            DeviceTypeId = type.Id,
+            IsEnabled = dev.IsEnabled,
             AdditionalProperties = dev.AdditionalProperties.GetRawText()
         };
         db.Devices.Add(device);
         await db.SaveChangesAsync(cancellationToken);
         var updatedDto = new
         {
-            name                  = device.Name,
-            deviceTypeName        = type.Name,
-            isEnabled             = device.IsEnabled,
-            additionalProperties  = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement
+            name = device.Name,
+            deviceTypeName  = type.Name,
+            isEnabled = device.IsEnabled,
+            additionalProperties = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement
         };
         return Results.Created($"/api/devices/{device.Id}", updatedDto);
     }

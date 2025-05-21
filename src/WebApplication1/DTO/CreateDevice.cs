@@ -10,7 +10,7 @@ public class CreateDevice
     [Required]
     public string Name { get; set; } = null!;
     [Required]
-    public string DeviceType { get; set; }  = null!;
+    public string DeviceTypeName { get; set; }  = null!;
     
     [Required]
     public bool IsEnabled {get; set;}

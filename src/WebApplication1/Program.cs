@@ -92,29 +92,38 @@ app.MapGet("/api/devices/{id}", async (int id, MasterContext db, CancellationTok
 });
 
 app.MapPost("/api/devices", async (CreateDevice dev, MasterContext db, CancellationToken cancellationToken) =>
+{
+    try
     {
-        try
+        var type = await db.DeviceTypes
+            .SingleOrDefaultAsync(t => t.Name == dev.DeviceTypeName, cancellationToken);
+
+        if (type is null)
+            return Results.BadRequest($"Unknown device type '{dev.DeviceTypeName}'.");
+        var device = new Device
         {
-            var type = await db.DeviceTypes
-                .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
-            if (type is null)
-                return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
-            var device = new Device
-            {
-                Name = dev.Name,
-                DeviceTypeId = type.Id,
-                IsEnabled = dev.IsEnabled,
-                AdditionalProperties = dev.AdditionalProperties.GetRawText() //from client structured data, then raw Json and back to structured json so the response looks correct 
-            };
-            db.Devices.Add(device);
-            await db.SaveChangesAsync(cancellationToken);
-            return Results.Created($"/api/devices/{device.Id}", device);
-        }
-        catch (Exception ex)
+            Name                 = dev.Name,
+            DeviceTypeId         = type.Id,
+            IsEnabled            = dev.IsEnabled,
+            AdditionalProperties = dev.AdditionalProperties.GetRawText()
+        };
+        db.Devices.Add(device);
+        await db.SaveChangesAsync(cancellationToken);
+        var updatedDto = new
         {
-            return Results.Problem(ex.Message);
-        }
-    });
+            name                  = device.Name,
+            deviceTypeName        = type.Name,
+            isEnabled             = device.IsEnabled,
+            additionalProperties  = JsonDocument.Parse(device.AdditionalProperties ?? "{}").RootElement
+        };
+        return Results.Created($"/api/devices/{device.Id}", updatedDto);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message);
+    }
+});
+
 
 
 //update
@@ -129,16 +138,15 @@ app.MapPut("/api/devices/{id}", async (int id, CreateDevice dev, MasterContext d
             return Results.NotFound($"Device {id} not found.");
 
         var type = await db.DeviceTypes
-            .SingleOrDefaultAsync(t => t.Name == dev.DeviceType, cancellationToken);
+            .SingleOrDefaultAsync(t => t.Name == dev.DeviceTypeName, cancellationToken);
         if (type is null)
-            return Results.BadRequest($"Unknown device type '{dev.DeviceType}'.");
-
+            return Results.BadRequest($"Unknown device type '{dev.DeviceTypeName}'.");
+        device.Name = dev.Name;
         device.DeviceTypeId = type.Id;
         device.IsEnabled = dev.IsEnabled;
         device.AdditionalProperties = dev.AdditionalProperties.GetRawText();
 
         await db.SaveChangesAsync(cancellationToken);
-
         return Results.NoContent();
     }
     catch (Exception ex)
